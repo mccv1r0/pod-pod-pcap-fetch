@@ -5,8 +5,20 @@ When you think you captured what you need, ctrl-c will stop the capture, create 
 
 Usage: 
 
-./pod-pod-pcap-fetch.sh --usage
+./pod-pod-pcap-fetch.sh -h|--usage
 
+```
+$ ./pod-pod-pcap-fetch.sh --usage 
+pod-pod-pcap-fetch.sh 
+    parameters (in any order) 
+     -k|--kubeconfig: path to kubeconfig if  env isn't set
+    -p1|--podOne: name of first pod 
+    -n1|--namespaceOne: namespace of first pod (default: "default")
+    -p2|--podTwo: second Podname 
+    -n2|--namespaceTwo: namespace of second pod (default: "default") 
+     -h|--usage: This usage message 
+$ 
+```
 
 Example:
 
@@ -15,7 +27,6 @@ Example:
 
 ## Current limitations:
 
-- kubeconfig must be in /tmp/kubeconfig
-
 - error checking and cleanup
+
 
