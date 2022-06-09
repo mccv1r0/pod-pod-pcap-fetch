@@ -19,7 +19,7 @@ term() {
     echo "Collecting PCAPs"
 
     # oc --kubeconfig $kubeconfig --namespace openshift-ovn-kubernetes exec $capturePod1 -- tcpdump -nn -vvv -r /tmp/tcpdump_pcap/tcpdump-$podOne.pcap > /tmp/tcpdump_pcap/tcpdump-$podOne.out 
-    oc --kubeconfig $kubeconfig --namespace openshift-ovn-kubernetes exec $capturePod1 -- bash -c 'tcpdump -nn -vvv -r /tmp/tcpdump_pcap/tcpdump-"$0".pcap > /tmp/tcpdump_pcap/tcpdump-"$0".out' $podOne 
+    oc --kubeconfig $kubeconfig --namespace openshift-ovn-kubernetes exec $capturePod1 -- bash -c 'tcpdump -nn --number -s 512 -X -vvv -r /tmp/tcpdump_pcap/tcpdump-"$0".pcap > /tmp/tcpdump_pcap/tcpdump-"$0".out' $podOne 
     echo "*** tcpdump for pod 1 done";
     oc --kubeconfig $kubeconfig --namespace openshift-ovn-kubernetes exec $capturePod1 -- tar czvf /tmp/tcpdump-$podOne.tgz /tmp/tcpdump_pcap/
     echo "*** create tarball for pod 1 done";
@@ -28,7 +28,7 @@ term() {
     echo "*** copy for pod 1 done";
 
     # oc --kubeconfig $kubeconfig --namespace openshift-ovn-kubernetes exec $capturePod2 -- tcpdump -nn -vvv -r /tmp/tcpdump_pcap/tcpdump-$podTwo.pcap > /tmp/tcpdump_pcap/tcpdump-$podTwo.out
-    oc --kubeconfig $kubeconfig --namespace openshift-ovn-kubernetes exec $capturePod2 -- bash -c 'tcpdump -nn -vvv -r /tmp/tcpdump_pcap/tcpdump-"$0".pcap > /tmp/tcpdump_pcap/tcpdump-"$0".out' $podTwo 
+    oc --kubeconfig $kubeconfig --namespace openshift-ovn-kubernetes exec $capturePod2 -- bash -c 'tcpdump -nn --number -s 512 -X -vvv -r /tmp/tcpdump_pcap/tcpdump-"$0".pcap > /tmp/tcpdump_pcap/tcpdump-"$0".out' $podTwo 
     echo "*** tcpdump for pod 2 done";
     oc --kubeconfig $kubeconfig --namespace openshift-ovn-kubernetes exec $capturePod2 -- tar czvf /tmp/tcpdump-$podTwo.tgz /tmp/tcpdump_pcap/
     echo "*** create tarball for pod 2 done";
