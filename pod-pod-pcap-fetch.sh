@@ -19,7 +19,7 @@ term() {
     echo "Collecting PCAPs"
 
     # oc --kubeconfig $kubeconfig --namespace openshift-ovn-kubernetes exec $capturePod1 -- tcpdump -nn -vvv -r /tmp/tcpdump_pcap/tcpdump-$podOne.pcap > /tmp/tcpdump_pcap/tcpdump-$podOne.out 
-    oc --kubeconfig $kubeconfig --namespace openshift-ovn-kubernetes exec $capturePod1 -- bash -c 'tcpdump -nn --number -s 512 -X -vvv -r /tmp/tcpdump_pcap/tcpdump-"$0".pcap > /tmp/tcpdump_pcap/tcpdump-"$0".out' $podOne 
+    oc --kubeconfig $kubeconfig --namespace openshift-ovn-kubernetes exec $capturePod1 -- bash -c 'tcpdump -nn -e --number -s 512 -X -vvv -r /tmp/tcpdump_pcap/tcpdump-"$0".pcap > /tmp/tcpdump_pcap/tcpdump-"$0".out' $podOne 
     echo "*** tcpdump for pod 1 done";
     oc --kubeconfig $kubeconfig --namespace openshift-ovn-kubernetes exec $capturePod1 -- tar czvf /tmp/tcpdump-$podOne.tgz /tmp/tcpdump_pcap/
     echo "*** create tarball for pod 1 done";
@@ -28,7 +28,7 @@ term() {
     echo "*** copy for pod 1 done";
 
     # oc --kubeconfig $kubeconfig --namespace openshift-ovn-kubernetes exec $capturePod2 -- tcpdump -nn -vvv -r /tmp/tcpdump_pcap/tcpdump-$podTwo.pcap > /tmp/tcpdump_pcap/tcpdump-$podTwo.out
-    oc --kubeconfig $kubeconfig --namespace openshift-ovn-kubernetes exec $capturePod2 -- bash -c 'tcpdump -nn --number -s 512 -X -vvv -r /tmp/tcpdump_pcap/tcpdump-"$0".pcap > /tmp/tcpdump_pcap/tcpdump-"$0".out' $podTwo 
+    oc --kubeconfig $kubeconfig --namespace openshift-ovn-kubernetes exec $capturePod2 -- bash -c 'tcpdump -nn -e --number -s 512 -X -vvv -r /tmp/tcpdump_pcap/tcpdump-"$0".pcap > /tmp/tcpdump_pcap/tcpdump-"$0".out' $podTwo 
     echo "*** tcpdump for pod 2 done";
     oc --kubeconfig $kubeconfig --namespace openshift-ovn-kubernetes exec $capturePod2 -- tar czvf /tmp/tcpdump-$podTwo.tgz /tmp/tcpdump_pcap/
     echo "*** create tarball for pod 2 done";
@@ -200,12 +200,12 @@ echo "----------------------------------------------------------"
 # only need to run on nodes where supplied pods are running.
 # TODO add filters "host $podOne and host $podTwo" 
 oc --kubeconfig $kubeconfig --namespace openshift-ovn-kubernetes exec $capturePod1 -- mkdir -p /tmp/tcpdump_pcap 
-oc --kubeconfig $kubeconfig --namespace openshift-ovn-kubernetes exec $capturePod1 -- tcpdump -nn --number -U -s 512 -i any -w /tmp/tcpdump_pcap/tcpdump-$podOne.pcap host $clientIP and host $serverIP & 
+oc --kubeconfig $kubeconfig --namespace openshift-ovn-kubernetes exec $capturePod1 -- tcpdump -nn -e --number -U -s 512 -i any -w /tmp/tcpdump_pcap/tcpdump-$podOne.pcap host $clientIP and host $serverIP & 
 # oc --kubeconfig $kubeconfig --namespace openshift-ovn-kubernetes exec $capturePod1 -- tcpdump -nn --number -U -s 512 -i any -w /tmp/tcpdump_pcap/tcpdump-$podOne.pcap & 
 cap1pid=$!
 
 oc --kubeconfig $kubeconfig --namespace openshift-ovn-kubernetes exec $capturePod2 -- mkdir -p /tmp/tcpdump_pcap 
-oc --kubeconfig $kubeconfig --namespace openshift-ovn-kubernetes exec $capturePod2 -- tcpdump -nn --number -U -s 512 -i any -w /tmp/tcpdump_pcap/tcpdump-$podTwo.pcap host $clientIP and host $serverIP & 
+oc --kubeconfig $kubeconfig --namespace openshift-ovn-kubernetes exec $capturePod2 -- tcpdump -nn -e --number -U -s 512 -i any -w /tmp/tcpdump_pcap/tcpdump-$podTwo.pcap host $clientIP and host $serverIP & 
 cap2pid=$!
 
 # Now just wait for ctrl-c
