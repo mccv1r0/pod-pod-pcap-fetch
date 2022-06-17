@@ -12,7 +12,7 @@ keepalive() {
 }
 
 term() {
-    echo "Completed TCPDump"
+    printf "\nCompleted TCPDump\n"
     pkill -P $$
     
     # Collect PCAPs
@@ -21,20 +21,25 @@ term() {
     oc --kubeconfig $kubeconfig --namespace openshift-ovn-kubernetes exec $capturePod1 -- bash -c 'tcpdump -nn -e --number -s 512 -X -vvv -r /tmp/tcpdump_pcap/tcpdump-"$0".pcap > /tmp/tcpdump_pcap/tcpdump-"$0".out' $podOne 
     echo "*** tcpdump for pod 1 done";
     oc --kubeconfig $kubeconfig --namespace openshift-ovn-kubernetes exec $capturePod1 -- tar czvf /tmp/tcpdump-$podOne.tgz /tmp/tcpdump_pcap/
-    echo "*** create tarball for pod 1 done";
+    echo "*** create tcpdump-$podOne.tgz completed";
     oc --kubeconfig $kubeconfig --namespace openshift-ovn-kubernetes cp $capturePod1:/tmp/tcpdump-$podOne.tgz ./tcpdump-$podOne.tgz
-    echo "*** copy for pod 1 done";
+    echo "*** copy of tcpdump-$podOne.tgz to local directory completed";
 
     oc --kubeconfig $kubeconfig --namespace openshift-ovn-kubernetes exec $capturePod2 -- bash -c 'tcpdump -nn -e --number -s 512 -X -vvv -r /tmp/tcpdump_pcap/tcpdump-"$0".pcap > /tmp/tcpdump_pcap/tcpdump-"$0".out' $podTwo 
     echo "*** tcpdump for pod 2 done";
     oc --kubeconfig $kubeconfig --namespace openshift-ovn-kubernetes exec $capturePod2 -- tar czvf /tmp/tcpdump-$podTwo.tgz /tmp/tcpdump_pcap/
-    echo "*** create tarball for pod 2 done";
+    echo "*** create tcpdump-$podTwo.tgz completed";
     oc --kubeconfig $kubeconfig --namespace openshift-ovn-kubernetes cp $capturePod2:/tmp/tcpdump-$podTwo.tgz ./tcpdump-$podTwo.tgz
-    echo "*** copy for pod 2 done";
+    echo "*** copy of tcpdump-$podTwo.tgz to local directory completed";
 
     CAPTURE=0;
 
+    # clean up 
+    oc --kubeconfig $kubeconfig --namespace openshift-ovn-kubernetes exec $capturePod1 -- rm -rdf /tmp/tcpdump_pcap/
+    oc --kubeconfig $kubeconfig --namespace openshift-ovn-kubernetes exec $capturePod2 -- rm -rdf /tmp/tcpdump_pcap/
+
     oc --kubeconfig $kubeconfig delete -f ./manifests/tcpdump-retrieve-daemonset-ovn.yaml
+
 }
 trap term SIGTERM SIGINT
 
