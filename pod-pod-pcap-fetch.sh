@@ -18,28 +18,36 @@ term() {
     # Collect PCAPs
     echo "Collecting PCAPs"
 
-    oc --kubeconfig $kubeconfig --namespace openshift-ovn-kubernetes exec $capturePod1 -- bash -c 'tcpdump -nn -e --number -s 512 -X -vvv -r /tmp/tcpdump_pcap/tcpdump-"$0".pcap > /tmp/tcpdump_pcap/tcpdump-"$0".out' $podOne 
+    oc --kubeconfig $kubeconfig --namespace $nameSpaceCNI exec $capturePod1 -- bash -c 'tcpdump -nn -e --number -s 512 -X -vvv -r /tmp/tcpdump_pcap/tcpdump-"$0".pcap > /tmp/tcpdump_pcap/tcpdump-"$0".out' $podOne 
     echo "*** tcpdump for pod 1 done";
-    oc --kubeconfig $kubeconfig --namespace openshift-ovn-kubernetes exec $capturePod1 -- tar czvf /tmp/tcpdump-$podOne.tgz /tmp/tcpdump_pcap/
+    oc --kubeconfig $kubeconfig --namespace $nameSpaceCNI exec $capturePod1 -- tar czvf /tmp/tcpdump-$podOne.tgz /tmp/tcpdump_pcap/
     echo "*** create tcpdump-$podOne.tgz completed";
-    oc --kubeconfig $kubeconfig --namespace openshift-ovn-kubernetes cp $capturePod1:/tmp/tcpdump-$podOne.tgz ./tcpdump-$podOne.tgz
+    oc --kubeconfig $kubeconfig --namespace $nameSpaceCNI cp $capturePod1:/tmp/tcpdump-$podOne.tgz ./tcpdump-$podOne.tgz
     echo "*** copy of tcpdump-$podOne.tgz to local directory completed";
 
-    oc --kubeconfig $kubeconfig --namespace openshift-ovn-kubernetes exec $capturePod2 -- bash -c 'tcpdump -nn -e --number -s 512 -X -vvv -r /tmp/tcpdump_pcap/tcpdump-"$0".pcap > /tmp/tcpdump_pcap/tcpdump-"$0".out' $podTwo 
-    echo "*** tcpdump for pod 2 done";
-    oc --kubeconfig $kubeconfig --namespace openshift-ovn-kubernetes exec $capturePod2 -- tar czvf /tmp/tcpdump-$podTwo.tgz /tmp/tcpdump_pcap/
-    echo "*** create tcpdump-$podTwo.tgz completed";
-    oc --kubeconfig $kubeconfig --namespace openshift-ovn-kubernetes cp $capturePod2:/tmp/tcpdump-$podTwo.tgz ./tcpdump-$podTwo.tgz
-    echo "*** copy of tcpdump-$podTwo.tgz to local directory completed";
+    if [ "$podTwo" != \"NONE\" ]; then
+	oc --kubeconfig $kubeconfig --namespace $nameSpaceCNI exec $capturePod2 -- bash -c 'tcpdump -nn -e --number -s 512 -X -vvv -r /tmp/tcpdump_pcap/tcpdump-"$0".pcap > /tmp/tcpdump_pcap/tcpdump-"$0".out' $podTwo 
+	echo "*** tcpdump for pod 2 done";
+	oc --kubeconfig $kubeconfig --namespace $nameSpaceCNI exec $capturePod2 -- tar czvf /tmp/tcpdump-$podTwo.tgz /tmp/tcpdump_pcap/
+	echo "*** create tcpdump-$podTwo.tgz completed";
+	oc --kubeconfig $kubeconfig --namespace $nameSpaceCNI cp $capturePod2:/tmp/tcpdump-$podTwo.tgz ./tcpdump-$podTwo.tgz
+	echo "*** copy of tcpdump-$podTwo.tgz to local directory completed";
+    fi
 
     CAPTURE=0;
 
     # clean up 
-    oc --kubeconfig $kubeconfig --namespace openshift-ovn-kubernetes exec $capturePod1 -- rm -rdf /tmp/tcpdump_pcap/
-    oc --kubeconfig $kubeconfig --namespace openshift-ovn-kubernetes exec $capturePod2 -- rm -rdf /tmp/tcpdump_pcap/
+    oc --kubeconfig $kubeconfig --namespace $nameSpaceCNI exec $capturePod1 -- rm -rdf /tmp/tcpdump_pcap/
+    if [ "$podTwo" != \"NONE\" ]; then
+	oc --kubeconfig $kubeconfig --namespace $nameSpaceCNI exec $capturePod2 -- rm -rdf /tmp/tcpdump_pcap/
+    fi
 
-    oc --kubeconfig $kubeconfig delete -f ./manifests/tcpdump-retrieve-daemonset-ovn.yaml
-
+    if [ "$nameSpaceCNI" == "openshift-ovn-kubernetes" ];
+    then
+	oc --kubeconfig $kubeconfig delete -f ./manifests/tcpdump-retrieve-daemonset-ovn.yaml
+    else
+	oc --kubeconfig $kubeconfig delete -f ./manifests/tcpdump-retrieve-daemonset-snn.yaml
+    fi 
 }
 trap term SIGTERM SIGINT
 
@@ -63,6 +71,9 @@ while [ $# -gt 0 ]; do
       ;;
     -p2|--podTwo)
       podTwoIn="$2"
+      ;;
+    -nsCni|--namespaceCni)
+      nameSpaceCniIn="$2"
       ;;
     -n1|--namespaceOne)
       nameSpace1In="$2"
@@ -97,26 +108,20 @@ while [ $# -gt 0 ]; do
   shift
 done
 
-# ?? [ -n "${KUBECONFIG}" ] && kubeconfigIn=${KUBECONFIG}
-# kubeconfig=${kubeconfigIn:-"/tmp/kubeconfig"}
-
 if [[ -z "${KUBECONFIG}" ]]; then
     kubeconfig=${kubeconfigIn:-"/tmp/kubeconfig"}
 else
     kubeconfig="${KUBECONFIG}"
 fi
 
-podOne=${podOneIn:-\"TODO\"}
-podTwo=${podTwoIn:-\"TODO\"}
+podOne=${podOneIn:-\"NONE\"}
+podTwo=${podTwoIn:-\"NONE\"}
 nameSpaceOne=${nameSpace1In:-"default"}
 nameSpaceTwo=${nameSpace2In:-"default"}
+nameSpaceCNI=${nameSpaceCniIn:-"openshift-ovn-kubernetes"}
 
-if [ "$podOne" == \"TODO\" ]; then
+if [ "$podOne" == \"NONE\" ]; then
     echo "podOne must be supplied";
-    exit 1
-fi
-if [ "$podTwo" == \"TODO\" ]; then
-    echo "podTwo must be supplied";
     exit 1
 fi
 
@@ -126,7 +131,12 @@ echo "----------------------------------------------------------"
 echo "Starting daemonsets"
 echo "----------------------------------------------------------"
 
-oc --kubeconfig $kubeconfig apply -f ./manifests/tcpdump-retrieve-daemonset-ovn.yaml
+if [ "$nameSpaceCNI" == "openshift-ovn-kubernetes" ];
+then
+    oc --kubeconfig $kubeconfig apply -f ./manifests/tcpdump-retrieve-daemonset-ovn.yaml
+else
+    oc --kubeconfig $kubeconfig apply -f ./manifests/tcpdump-retrieve-daemonset-sdn.yaml
+fi
 
 echo "----------------------------------------------------------"
 echo "Don't do anything until daemonset images pulled and running."
@@ -135,7 +145,7 @@ echo "----------------------------------------------------------"
 waitingToStart=1;
 while [ "$waitingToStart" -eq 1 ];
 do
-    podList=$(oc --kubeconfig $kubeconfig --namespace openshift-ovn-kubernetes get pods -l app=tcpdump-retrieve --field-selector=status.phase!=Running --output=jsonpath={.items..metadata.name});
+    podList=$(oc --kubeconfig $kubeconfig --namespace $nameSpaceCNI get pods -l app=tcpdump-retrieve --field-selector=status.phase!=Running --output=jsonpath={.items..metadata.name});
 
     if [[ -z $podList || $podList = "" ]]
     then
@@ -151,13 +161,14 @@ done
 # get pod IP addresses we need to capture
 
 echo "podOne is: " ${podOne} " in namespace " ${nameSpaceOne}
-echo "podTwo is: " ${podTwo} " in namespace " ${nameSpaceTwo}
-
 clientIP=$(oc --kubeconfig $kubeconfig --namespace $nameSpaceOne get pod $podOne -o jsonpath='{.status.podIP}')
-serverIP=$(oc --kubeconfig $kubeconfig --namespace $nameSpaceTwo get pod $podTwo -o jsonpath='{.status.podIP}')
-
 echo "clientIP is " ${clientIP};
-echo "serverIP is " ${serverIP};
+
+if [ "$podTwo" != \"NONE\" ]; then
+    echo "podTwo is: " ${podTwo} " in namespace " ${nameSpaceTwo}
+    serverIP=$(oc --kubeconfig $kubeconfig --namespace $nameSpaceTwo get pod $podTwo -o jsonpath='{.status.podIP}')
+    echo "serverIP is " ${serverIP};
+fi
 
 # find nodes where pods run
 prefix="NODE ";
@@ -168,19 +179,20 @@ podNode1=${podNode1#$prefix};
 
 echo "$podOne is on node: $podNode1"; 
 
-podNode2=$(oc --kubeconfig $kubeconfig --namespace $nameSpaceTwo get pod $podTwo -o=custom-columns=NODE:.spec.nodeName)
-podNode2=$(echo $podNode2|tr -d '\n');
-podNode2=${podNode2#$prefix};
-
-echo "$podTwo is on node: $podNode2"; 
+if [ "$podTwo" != \"NONE\" ]; then
+    podNode2=$(oc --kubeconfig $kubeconfig --namespace $nameSpaceTwo get pod $podTwo -o=custom-columns=NODE:.spec.nodeName)
+    podNode2=$(echo $podNode2|tr -d '\n');
+    podNode2=${podNode2#$prefix};
+    echo "$podTwo is on node: $podNode2"; 
+fi
 
 #
 # Find the tcpdump pod on these nodes
 #
-for pod in $(oc --kubeconfig $kubeconfig --namespace openshift-ovn-kubernetes get pods -l app=tcpdump-retrieve -o jsonpath='{range@.items[*]}{.metadata.name}{"\n"}{end}');
+for pod in $(oc --kubeconfig $kubeconfig --namespace $nameSpaceCNI get pods -l app=tcpdump-retrieve -o jsonpath='{range@.items[*]}{.metadata.name}{"\n"}{end}');
 do 
     # echo $pod;
-    nodeName=$(oc --kubeconfig $kubeconfig -n openshift-ovn-kubernetes get pod $pod -o=custom-columns=NODE:.spec.nodeName)
+    nodeName=$(oc --kubeconfig $kubeconfig -n $nameSpaceCNI get pod $pod -o=custom-columns=NODE:.spec.nodeName)
     nodeName=$(echo $nodeName|tr -d '\n');
     # prefix="NODE ";
     nodeName=${nodeName#$prefix};
@@ -188,15 +200,17 @@ do
 
     if [ "$nodeName" == "$podNode1" ]; then
 	capturePod1=$pod
+	echo "$podOne capture is being performed on host pod $capturePod1"
     fi
     
-    if [ "$nodeName" == "$podNode2" ]; then
-	capturePod2=$pod
-    fi    
+    if [ "$podTwo" != \"NONE\" ]; then
+	if [ "$nodeName" == "$podNode2" ]; then
+	    capturePod2=$pod
+	    echo "$podTwo capture is being performed on host pod $capturePod2"
+	fi
+    fi
 done
 
-echo "$podOne capture is being performed on host pod $capturePod1"
-echo "$podTwo capture is being performed on host pod $capturePod2"
 
 echo "----------------------------------------------------------"
 echo "Starting the pcaps. These will run until failure of killed."
@@ -204,38 +218,41 @@ echo "  Kill with Crtl + C to copy back the contents"
 echo "----------------------------------------------------------"
 
 pcapArgs=${pcapArgsIn:-" -nn -e --number -U -s 512 -i any"}
-pcapFilter=${pcapFilterIn:-" host $clientIP and host $serverIP"} 
-
+if [ "$podTwo" != \"NONE\" ];
+then
+    pcapFilter=${pcapFilterIn:-" host $clientIP and host $serverIP"} 
+else
+    pcapFilter=${pcapFilterIn:-" host $clientIP"} 
+fi
 
 cmd1="tcpdump"
 cmd1="${cmd1} -U ${pcapArgs}"
 cmd1="${cmd1} -w /tmp/tcpdump_pcap/tcpdump-${podOne}.pcap"
 cmd1="${cmd1} ${pcapFilter}"
-
 echo "Command 1 is: ${cmd1}"
 
-cmd2="tcpdump"
-cmd2="${cmd2} -U ${pcapArgs}"
-cmd2="${cmd2} -w /tmp/tcpdump_pcap/tcpdump-${podTwo}.pcap"
-cmd2="${cmd2} ${pcapFilter}"
-
-echo "Command 2 is: ${cmd2}"
+if [ "$podTwo" != \"NONE\" ]; then
+    cmd2="tcpdump"
+    cmd2="${cmd2} -U ${pcapArgs}"
+    cmd2="${cmd2} -w /tmp/tcpdump_pcap/tcpdump-${podTwo}.pcap"
+    cmd2="${cmd2} ${pcapFilter}"
+    echo "Command 2 is: ${cmd2}"
+fi
 
 # run tcpdump -i any using podIPs as filters (if supplied).
 # only need to run on nodes where supplied pods are running.
 
-oc --kubeconfig $kubeconfig --namespace openshift-ovn-kubernetes exec $capturePod1 -- mkdir -p /tmp/tcpdump_pcap 
-#oc --kubeconfig $kubeconfig --namespace openshift-ovn-kubernetes exec $capturePod1 -- tcpdump -nn -e --number -U -s 512 -i any -w /tmp/tcpdump_pcap/tcpdump-$podOne.pcap host $clientIP and host $serverIP &
-oc --kubeconfig $kubeconfig --namespace openshift-ovn-kubernetes exec $capturePod1 -- /bin/bash -c "eval ${cmd1}" & 
+oc --kubeconfig $kubeconfig --namespace $nameSpaceCNI exec $capturePod1 -- mkdir -p /tmp/tcpdump_pcap 
+oc --kubeconfig $kubeconfig --namespace $nameSpaceCNI exec $capturePod1 -- /bin/bash -c "eval ${cmd1}" & 
 cap1pid=$!
 echo "cap1pid is ${cap1pid}"
 
-
-oc --kubeconfig $kubeconfig --namespace openshift-ovn-kubernetes exec $capturePod2 -- mkdir -p /tmp/tcpdump_pcap 
-# oc --kubeconfig $kubeconfig --namespace openshift-ovn-kubernetes exec $capturePod2 -- tcpdump -nn -e --number -U -s 512 -i any -w /tmp/tcpdump_pcap/tcpdump-$podTwo.pcap host $clientIP and host $serverIP & 
-oc --kubeconfig $kubeconfig --namespace openshift-ovn-kubernetes exec $capturePod2 -- /bin/bash -c "eval ${cmd2}" & 
-cap2pid=$!
-echo "cap2pid is ${cap2pid}"
+if [ "$podTwo" != \"NONE\" ]; then
+    oc --kubeconfig $kubeconfig --namespace $nameSpaceCNI exec $capturePod2 -- mkdir -p /tmp/tcpdump_pcap 
+    oc --kubeconfig $kubeconfig --namespace $nameSpaceCNI exec $capturePod2 -- /bin/bash -c "eval ${cmd2}" & 
+    cap2pid=$!
+    echo "cap2pid is ${cap2pid}"
+fi
 
 # Now just wait for ctrl-c
 keepalive;
