@@ -1,0 +1,94 @@
+
+kind: DaemonSet
+apiVersion: apps/v1
+metadata:
+  name: tcpdump-retrieve
+  namespace: openshift-sdn
+  annotations:
+    kubernetes.io/description: |
+      This daemonset launches tcpdump-retriev on each node.
+    release.openshift.io/version: "{{.ReleaseVersion}}"
+spec:
+  selector:
+    matchLabels:
+      app: tcpdump-retrieve
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      # by default, Deployments spin up the new pod before terminating the old one
+      # but we don't want that - because ovsdb holds the lock.
+      maxSurge: 0
+      maxUnavailable: 1
+  template:
+    metadata:
+      labels:
+        app: tcpdump-retrieve 
+        component: network
+        type: infra
+        openshift.io/component: network
+        kubernetes.io/os: "linux"
+    spec:
+      serviceAccountName: sdn-controller
+      hostNetwork: true
+      hostPID: true
+      priorityClassName: "system-cluster-critical"
+      containers:
+      # ovnkube master: convert kubernetes objects in to nbdb logical network components
+      - name: tcpdump-retriev
+        image: quay.io/mcambria/f34mcctools:latest
+        command:
+        - /bin/bash
+        - -c
+        - |
+          set -xe
+          if [[ -f "/env/_master" ]]; then
+            set -o allexport
+            source "/env/_master"
+            set +o allexport
+          fi
+
+          echo "I$(date "+%m%d %H:%M:%S.%N") - tcpdump-retrieve - start  tcpdump-retrieve ${K8S_NODE}"
+          tail -F /dev/null
+        lifecycle:
+          preStop:
+            exec:
+              command: ["/bin/bash", "-c", "echo tcpdump-retrieve done"]
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - mountPath: /tmp
+          name: host-tmp
+        - mountPath: /sys
+          name: host-sys
+        resources:
+          requests:
+            cpu: 10m
+            memory: 300Mi
+        env:
+        - name: OVN_KUBE_LOG_LEVEL
+          value: "4"
+        - name: K8S_NODE
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        terminationMessagePolicy: FallbackToLogsOnError
+
+      nodeSelector:
+        ### node-role.kubernetes.io/master: ""
+        beta.kubernetes.io/os: "linux"
+      volumes:
+      - name: host-tmp
+        hostPath:
+          path: /tmp
+      - name: host-sys
+        hostPath:
+          path: /sys
+      tolerations:
+      - key: "node-role.kubernetes.io/master"
+        operator: "Exists"
+      - key: "node.kubernetes.io/not-ready"
+        operator: "Exists"
+      - key: "node.kubernetes.io/unreachable"
+        operator: "Exists"
+      - key: "node.kubernetes.io/network-unavailable"
+        operator: "Exists"
