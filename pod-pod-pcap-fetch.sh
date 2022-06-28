@@ -169,6 +169,11 @@ then
 else
     oc --kubeconfig $kubeconfig apply -f ./manifests/tcpdump-retrieve-daemonset-sdn.yaml
 fi
+if [ $? != 0 ]
+then
+    echo "error: failed to start daemonsets"
+    exit 1
+fi
 
 echo "----------------------------------------------------------"
 echo "Don't do anything until daemonset images pulled and running."
