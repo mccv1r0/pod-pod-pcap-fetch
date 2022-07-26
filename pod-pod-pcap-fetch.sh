@@ -269,9 +269,19 @@ if [ "$allNodes" == \"FALSE\" ];
 then
     if [ "$podTwo" != \"NONE\" ];
     then
-	pcapFilter=${pcapFilterIn:-" host $clientIP and host $serverIP"} 
+	if [ "$nameSpaceCNI" == "openshift-ovn-kubernetes" ];
+	then
+	    pcapFilter=${pcapFilterIn:-" 'host $clientIP and host $serverIP or \(geneve and host $clientIP and host $serverIP\)'"}
+	else
+	    pcapFilter=${pcapFilterIn:-" host $clientIP and host $serverIP"}
+	fi
     else
-	pcapFilter=${pcapFilterIn:-" host $clientIP"} 
+	if [ "$nameSpaceCNI" == "openshift-ovn-kubernetes" ];
+	then
+	    pcapFilter=${pcapFilterIn:-" 'host $clientIP' or \(geneve and host $clientIP\)'"}
+	else
+	    pcapFilter=${pcapFilterIn:-" host $clientIP"}
+	fi
     fi
 
     if [ "$podOne" != \"NONE\" ]; then
