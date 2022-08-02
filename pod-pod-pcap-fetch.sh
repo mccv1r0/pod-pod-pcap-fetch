@@ -286,16 +286,16 @@ then
 
     if [ "$podOne" != \"NONE\" ]; then
 	cmd1="tcpdump"
-	cmd1="${cmd1} -U ${pcapArgs}"
 	cmd1="${cmd1} -w /tmp/tcpdump_pcap/tcpdump-${podOne}.pcap"
+	cmd1="${cmd1} -U ${pcapArgs}"
 	cmd1="${cmd1} ${pcapFilter}"
 	echo "Command 1 is: ${cmd1}"
     fi
     
     if [ "$podTwo" != \"NONE\" ]; then
 	cmd2="tcpdump"
-	cmd2="${cmd2} -U ${pcapArgs}"
 	cmd2="${cmd2} -w /tmp/tcpdump_pcap/tcpdump-${podTwo}.pcap"
+	cmd2="${cmd2} -U ${pcapArgs}"
 	cmd2="${cmd2} ${pcapFilter}"
 	echo "Command 2 is: ${cmd2}"
     fi
