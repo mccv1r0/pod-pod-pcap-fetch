@@ -35,7 +35,7 @@ spec:
       containers:
       # ovnkube master: convert kubernetes objects in to nbdb logical network components
       - name: tcpdump-retriev
-        image: quay.io/mcambria/f34mcctools:latest
+        image: quay.io/openshift/origin-network-tools:latest
         command:
         - /bin/bash
         - -c
