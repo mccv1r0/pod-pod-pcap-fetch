@@ -24,9 +24,21 @@ pod-pod-pcap-fetch.sh
 $ 
 ```
 
-Example:
+### Examples
+
+###### pod to pod 
 
 ./pod-pod-pcap-fetch.sh -p1 socksink-744f44d8b-jcqw8 -p2 socksink-744f44d8b-l8g2t -n1 default -n2 default
+
+
+###### anything to a specific pod
+
+./pod-pod-pcap-fetch.sh -p1 socksink-744f44d8b-jcqw8 -n1 default
+
+
+###### everything 
+
+./pod-pod-pcap-fetch.sh --allNodes true 
 
 
 ## Current limitations:
